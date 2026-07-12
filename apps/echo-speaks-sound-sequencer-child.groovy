@@ -287,10 +287,10 @@ void renderSoundStep(
             input(
                 name: customUriSetting,
                 type: "text",
-                title: "Custom audio URI or tag",
+                title: "Custom audio URI",
                 description:
-                    "Paste a soundbank:// URI, a directly accessible " +
-                    "HTTPS audio URL, or Amazon's copied <audio> tag.",
+                    "Use a soundbank:// URI or a directly accessible " +
+                    "HTTPS audio URL.",
                 required: true
             )
         }
@@ -1108,27 +1108,30 @@ String normalizeCustomAudioInput(String customInput) {
         return null
     }
 
-    def audioTagMatcher = value =~
-        /(?is)^<audio\s+src\s*=\s*(["'])(.*?)\1\s*\/?>$/
+    try {
+        URI parsedUri = new URI(value)
+        String scheme =
+            parsedUri.scheme?.toLowerCase()
 
-    if (audioTagMatcher.matches()) {
-        value =
-            audioTagMatcher.group(2)?.trim()
-    }
+        Boolean validHttpsUri =
+            scheme == "https" &&
+            parsedUri.host
 
-    String normalizedValue =
-        value?.toLowerCase()
+        Boolean validSoundbankUri =
+            scheme == "soundbank" &&
+            parsedUri.host &&
+            parsedUri.path &&
+            parsedUri.path != "/"
 
-    if (
-        normalizedValue?.startsWith("https://") ||
-        normalizedValue?.startsWith("soundbank://")
-    ) {
-        return value
+        if (validHttpsUri || validSoundbankUri) {
+            return value
+        }
+    } catch (Exception ignored) {
+        /* Invalid URI syntax is handled by the warning below. */
     }
 
     log.warn(
-        "Custom audio must be an HTTPS URI, a soundbank:// URI, " +
-        "or an <audio src=\"...\"/> tag containing one of those URIs."
+        "Custom audio must be an HTTPS URI or a soundbank:// URI."
     )
 
     return null

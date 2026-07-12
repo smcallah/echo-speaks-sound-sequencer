@@ -5,7 +5,7 @@ A Hubitat parent/child app for building ordered sound and speech sequences that 
 The app sends SSML directly to the Echo Speaks device `speak()` command, allowing sequences that mix:
 
 - Alexa Sound Library effects
-- Custom `soundbank://` URIs or copied Amazon `<audio>` tags
+- Custom `soundbank://` URIs
 - Directly accessible HTTPS audio files
 - Spoken messages
 - Multiple supported Polly voices
@@ -150,7 +150,7 @@ The app builds the SSML internally:
 A sound step can use:
 
 - A preset sound from the dropdown
-- A custom Amazon Sound Library URI or copied `<audio>` tag
+- A custom Amazon Sound Library URI
 - A directly accessible HTTPS audio file
 
 Example Amazon Sound Library URI:
@@ -158,15 +158,6 @@ Example Amazon Sound Library URI:
 ```text
 soundbank://soundlibrary/animals/amzn_sfx_monkeys_chatter_01
 ```
-
-You can also paste the complete tag copied from Amazon's Alexa sound
-library:
-
-```xml
-<audio src="soundbank://soundlibrary/air/fire_extinguisher/fire_extinguisher_01"/>
-```
-
-The app extracts and validates the `src` value before building the sequence.
 
 Example HTTPS audio URL:
 
