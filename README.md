@@ -46,8 +46,10 @@ Before installing this app, verify that the `speak` command works directly from 
 
 ```text
 echo-speaks-sound-sequencer/
-├── EchoSpeaksSoundSequencer.groovy
-├── EchoSpeaksSoundSequence.groovy
+├── apps/
+│   ├── echo-speaks-sound-sequencer-parent.groovy
+│   └── echo-speaks-sound-sequencer-child.groovy
+├── resources/
 └── README.md
 ```
 
@@ -58,7 +60,7 @@ Parent app:
 Echo Speaks Sound Sequencer
 
 Child app:
-Echo Speaks - Sound Sequence
+Echo Speaks Sound - Sequence
 ```
 
 ## Installation
@@ -68,10 +70,12 @@ Echo Speaks - Sound Sequence
 1. Open Hubitat.
 2. Go to **Developer Tools → Apps Code**.
 3. Click **New App**.
-4. Paste the parent app code from `EchoSpeaksSoundSequencer.groovy`.
+4. Paste the parent app code from
+   `apps/echo-speaks-sound-sequencer-parent.groovy`.
 5. Click **Save**.
 6. Create a second new app.
-7. Paste the child app code from `EchoSpeaksSoundSequence.groovy`.
+7. Paste the child app code from
+   `apps/echo-speaks-sound-sequencer-child.groovy`.
 8. Click **Save**.
 9. Go to **Apps → Add User App**.
 10. Install **Echo Speaks Sound Sequencer**.
@@ -81,18 +85,16 @@ Save the parent code before saving the child code.
 
 ### Import from GitHub
 
-Each Groovy file can include an `importUrl` in its `definition` section.
+Use this raw URL for the parent app:
 
-Example:
-
-```groovy
-importUrl: "https://raw.githubusercontent.com/YOUR-USERNAME/YOUR-REPOSITORY/main/EchoSpeaksSoundSequencer.groovy"
+```text
+https://raw.githubusercontent.com/smcallah/echo-speaks-sound-sequencer/main/apps/echo-speaks-sound-sequencer-parent.groovy
 ```
 
-Use the matching raw URL in the child app:
+Use this raw URL for the child app:
 
-```groovy
-importUrl: "https://raw.githubusercontent.com/YOUR-USERNAME/YOUR-REPOSITORY/main/EchoSpeaksSoundSequence.groovy"
+```text
+https://raw.githubusercontent.com/smcallah/echo-speaks-sound-sequencer/main/apps/echo-speaks-sound-sequencer-child.groovy
 ```
 
 In Hubitat:
