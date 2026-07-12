@@ -41,9 +41,10 @@ Map mainPage() {
             input(
                 name: "triggerSwitch",
                 type: "capability.switch",
-                title: "Virtual switch",
+                title: "Trigger switch",
                 description:
-                    "The sequence plays when this switch turns on.",
+                    "Select any physical or virtual Hubitat switch. " +
+                    "The sequence plays when it reports on.",
                 required: true,
                 multiple: false
             )
@@ -125,28 +126,6 @@ Map mainPage() {
                         range: "1..300"
                     )
                 }
-            }
-        }
-
-        section("Switch behavior") {
-            input(
-                name: "resetSwitch",
-                type: "bool",
-                title:
-                    "Turn the virtual switch off automatically",
-                defaultValue: true,
-                submitOnChange: true
-            )
-
-            if (resetSwitch == true) {
-                input(
-                    name: "resetDelay",
-                    type: "number",
-                    title: "Switch reset delay in milliseconds",
-                    required: true,
-                    defaultValue: 750,
-                    range: "250..10000"
-                )
             }
         }
 
@@ -560,7 +539,6 @@ void switchHandler(evt) {
             "Add and configure at least one message or sound step."
         )
 
-        resetTriggerSwitch()
         return
     }
 
@@ -579,7 +557,6 @@ void switchHandler(evt) {
         )
     }
 
-    resetTriggerSwitch()
 }
 
 String buildSequenceSsml() {
@@ -1000,6 +977,9 @@ Map voiceOptions() {
 
 Map soundOptions() {
     return [
+        "custom":
+            "Custom soundbank or HTTPS URI",
+
         "gameshow_intro":
             "Game show: Intro",
 
@@ -1067,10 +1047,7 @@ Map soundOptions() {
             "Science fiction: Sonar pings",
 
         "scifi_zap":
-            "Science fiction: Electric zap",
-
-        "custom":
-            "Custom soundbank or HTTPS URI"
+            "Science fiction: Electric zap"
     ]
 }
 
@@ -1231,42 +1208,6 @@ Map<String, String> soundUriMap() {
             "soundbank://soundlibrary/scifi/" +
             "amzn_sfx_scifi_zap_electric_01"
     ]
-}
-
-/*
- * Trigger-switch reset
- */
-
-void resetTriggerSwitch() {
-    if (
-        resetSwitch != true ||
-        !triggerSwitch
-    ) {
-        return
-    }
-
-    Integer delayMilliseconds =
-        safeInteger(
-            resetDelay,
-            750
-        )
-
-    runInMillis(
-        delayMilliseconds,
-        "turnTriggerSwitchOff",
-        [overwrite: true]
-    )
-}
-
-void turnTriggerSwitchOff() {
-    try {
-        triggerSwitch?.off()
-    } catch (Exception ex) {
-        log.warn(
-            "Unable to turn off " +
-            "${triggerSwitch?.displayName}: ${ex.message}"
-        )
-    }
 }
 
 /*

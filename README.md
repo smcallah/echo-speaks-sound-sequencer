@@ -17,7 +17,7 @@ Echo Speaks is required. This app does not communicate with Alexa or Amazon dire
 
 - Parent app manages multiple independent sequences
 - Each sequence is created as a child app
-- Trigger playback from a Hubitat virtual switch
+- Trigger playback from any physical or virtual Hubitat switch
 - Add any number of sound and message steps
 - Play steps in the exact displayed order
 - Move steps up or down
@@ -30,7 +30,6 @@ Echo Speaks is required. This app does not communicate with Alexa or Amazon dire
 - Target one or more Echo Speaks devices
 - Optionally set a temporary playback volume
 - Restore each Echo device to its previous volume afterward
-- Automatically reset the trigger switch to `off`
 - Optional debug logging
 
 ## Requirements
@@ -38,7 +37,7 @@ Echo Speaks is required. This app does not communicate with Alexa or Amazon dire
 - Hubitat Elevation
 - Echo Speaks installed and working
 - At least one Echo Speaks device
-- A Hubitat virtual switch for each sequence you want to trigger
+- A physical or virtual Hubitat switch for each sequence you want to trigger
 
 Before installing this app, verify that the `speak` command works directly from the Echo Speaks device page.
 
@@ -112,14 +111,16 @@ In Hubitat:
 1. Open **Apps → Echo Speaks Sound Sequencer**.
 2. Select **Add a new Echo sequence**.
 3. Enter a sequence name.
-4. Select a virtual switch.
+4. Select a physical or virtual trigger switch.
 5. Select one or more Echo Speaks devices.
 6. Add message and sound steps.
 7. Arrange them in the desired order.
-8. Configure volume and switch-reset options.
+8. Configure the optional temporary playback volume.
 9. Click **Done**.
 
-Turning the selected virtual switch on will play the sequence.
+When the selected switch reports `on`, the sequence will play. The app does
+not turn the trigger switch off; configure automatic shutoff on the virtual
+switch itself if needed.
 
 ## Playback Steps
 
@@ -267,11 +268,11 @@ Safe rename procedure:
 8. Reinstall the parent.
 9. Recreate the child sequences.
 
-An old child may otherwise remain subscribed to its virtual switch even when it no longer appears normally in the Apps list.
+An old child may otherwise remain subscribed to its trigger switch even when it no longer appears normally in the Apps list.
 
 If that happens:
 
-1. Open the virtual switch device page.
+1. Open the trigger switch device page.
 2. Find the old app under **In use by**.
 3. Open the app from that list.
 4. Remove it.
@@ -301,9 +302,9 @@ That is the problem this app is designed to bypass. Use the sequence app instead
 
 ### Duplicate playback
 
-More than one installed app may be subscribed to the same virtual switch.
+More than one installed app may be subscribed to the same trigger switch.
 
-Open the virtual switch device page and inspect **In use by**. Remove obsolete or orphaned app instances.
+Open the trigger switch device page and inspect **In use by**. Remove obsolete or orphaned app instances.
 
 ### Volume does not restore correctly
 

@@ -34,7 +34,7 @@ Map mainPage() {
             paragraph(
                 "Each sequence can contain any ordered combination of " +
                 "messages and sounds. Create one child sequence for each " +
-                "virtual-switch automation."
+                "switch-triggered automation."
             )
         }
     }
