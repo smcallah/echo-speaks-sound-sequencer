@@ -640,6 +640,13 @@ void appendMessageStep(
     String voiceSelection =
         settings["stepVoice_${stepId}"]?.toString()
 
+    if (debugLogging == true) {
+        log.debug(
+            "Message step ${index + 1} voice setting: " +
+            "${voiceSelection ?: 'default'}"
+        )
+    }
+
     String escapedMessage =
         escapeXmlText(message)
 
@@ -1003,6 +1010,21 @@ Integer getDeviceVolume(echoDevice) {
  */
 
 Map parseVoiceSelection(String voiceSelection) {
+    Map voiceAliases = [
+        "AditiEnglish": [
+            name: "Aditi",
+            locale: "en-IN"
+        ],
+        "AditiHindi": [
+            name: "Aditi",
+            locale: "hi-IN"
+        ]
+    ]
+
+    if (voiceAliases[voiceSelection]) {
+        return voiceAliases[voiceSelection]
+    }
+
     Integer safeSeparatorIndex =
         voiceSelection.indexOf('__')
 
@@ -1022,9 +1044,12 @@ Map parseVoiceSelection(String voiceSelection) {
         voiceSelection.indexOf('|')
 
     if (separatorIndex < 0) {
+        String locale =
+            voiceLocaleMap()[voiceSelection]
+
         return [
             name: voiceSelection,
-            locale: null
+            locale: locale
         ]
     }
 
@@ -1036,6 +1061,37 @@ Map parseVoiceSelection(String voiceSelection) {
         locale: voiceSelection.substring(
             separatorIndex + 1
         )
+    ]
+}
+
+Map voiceLocaleMap() {
+    return [
+        "Nicole": "en-AU",
+        "Russell": "en-AU",
+        "Raveena": "en-IN",
+        "Geraint": "en-GB-WLS",
+        "Chantal": "fr-CA",
+        "Celine": "fr-FR",
+        "Lea": "fr-FR",
+        "Mathieu": "fr-FR",
+        "Hans": "de-DE",
+        "Marlene": "de-DE",
+        "Vicki": "de-DE",
+        "Bianca": "it-IT",
+        "Carla": "it-IT",
+        "Giorgio": "it-IT",
+        "Mizuki": "ja-JP",
+        "Takumi": "ja-JP",
+        "Camila": "pt-BR",
+        "Ricardo": "pt-BR",
+        "Vitoria": "pt-BR",
+        "Lupe": "es-US",
+        "Miguel": "es-US",
+        "Penelope": "es-US",
+        "Conchita": "es-ES",
+        "Enrique": "es-ES",
+        "Lucia": "es-ES",
+        "Mia": "es-MX"
     ]
 }
 
@@ -1052,48 +1108,48 @@ Map voiceOptions() {
         "Matthew": "English (US) — Matthew",
         "Salli": "English (US) — Salli",
 
-        "Nicole__en_AU": "English (Australia) — Nicole",
-        "Russell__en_AU": "English (Australia) — Russell",
+        "Nicole": "English (Australia) — Nicole",
+        "Russell": "English (Australia) — Russell",
 
         "Amy": "English (Britain) — Amy",
         "Brian": "English (Britain) — Brian",
         "Emma": "English (Britain) — Emma",
 
-        "Aditi__en_IN": "English (India) — Aditi",
-        "Raveena__en_IN": "English (India) — Raveena",
-        "Geraint__en_GB_WLS": "English (Wales) — Geraint",
+        "AditiEnglish": "English (India) — Aditi",
+        "Raveena": "English (India) — Raveena",
+        "Geraint": "English (Wales) — Geraint",
 
-        "Chantal__fr_CA": "French (Canada) — Chantal",
-        "Celine__fr_FR": "French (France) — Celine",
-        "Lea__fr_FR": "French (France) — Lea",
-        "Mathieu__fr_FR": "French (France) — Mathieu",
+        "Chantal": "French (Canada) — Chantal",
+        "Celine": "French (France) — Celine",
+        "Lea": "French (France) — Lea",
+        "Mathieu": "French (France) — Mathieu",
 
-        "Hans__de_DE": "German — Hans",
-        "Marlene__de_DE": "German — Marlene",
-        "Vicki__de_DE": "German — Vicki",
+        "Hans": "German — Hans",
+        "Marlene": "German — Marlene",
+        "Vicki": "German — Vicki",
 
-        "Aditi__hi_IN": "Hindi — Aditi",
+        "AditiHindi": "Hindi — Aditi",
 
-        "Bianca__it_IT": "Italian — Bianca",
-        "Carla__it_IT": "Italian — Carla",
-        "Giorgio__it_IT": "Italian — Giorgio",
+        "Bianca": "Italian — Bianca",
+        "Carla": "Italian — Carla",
+        "Giorgio": "Italian — Giorgio",
 
-        "Mizuki__ja_JP": "Japanese — Mizuki",
-        "Takumi__ja_JP": "Japanese — Takumi",
+        "Mizuki": "Japanese — Mizuki",
+        "Takumi": "Japanese — Takumi",
 
-        "Camila__pt_BR": "Portuguese (Brazil) — Camila",
-        "Ricardo__pt_BR": "Portuguese (Brazil) — Ricardo",
-        "Vitoria__pt_BR": "Portuguese (Brazil) — Vitoria",
+        "Camila": "Portuguese (Brazil) — Camila",
+        "Ricardo": "Portuguese (Brazil) — Ricardo",
+        "Vitoria": "Portuguese (Brazil) — Vitoria",
 
-        "Lupe__es_US": "Spanish (US) — Lupe",
-        "Miguel__es_US": "Spanish (US) — Miguel",
-        "Penelope__es_US": "Spanish (US) — Penelope",
+        "Lupe": "Spanish (US) — Lupe",
+        "Miguel": "Spanish (US) — Miguel",
+        "Penelope": "Spanish (US) — Penelope",
 
-        "Conchita__es_ES": "Spanish (Spain) — Conchita",
-        "Enrique__es_ES": "Spanish (Spain) — Enrique",
-        "Lucia__es_ES": "Spanish (Spain) — Lucia",
+        "Conchita": "Spanish (Spain) — Conchita",
+        "Enrique": "Spanish (Spain) — Enrique",
+        "Lucia": "Spanish (Spain) — Lucia",
 
-        "Mia__es_MX": "Spanish (Mexico) — Mia"
+        "Mia": "Spanish (Mexico) — Mia"
     ]
 }
 
