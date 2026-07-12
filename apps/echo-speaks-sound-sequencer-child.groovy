@@ -287,10 +287,10 @@ void renderSoundStep(
             input(
                 name: customUriSetting,
                 type: "text",
-                title: "Custom audio URI",
+                title: "Custom audio URI or tag",
                 description:
-                    "Use a soundbank:// URI or a directly accessible " +
-                    "HTTPS audio URL.",
+                    "Paste a soundbank:// URI, a directly accessible " +
+                    "HTTPS audio URL, or Amazon's copied <audio> tag.",
                 required: true
             )
         }
@@ -1083,7 +1083,7 @@ String resolveSoundUri(
     }
 
     if (selection == "custom") {
-        return customUri?.trim()
+        return normalizeCustomAudioInput(customUri)
     }
 
     Map<String, String> sounds =
@@ -1099,6 +1099,39 @@ String resolveSoundUri(
     }
 
     return uri
+}
+
+String normalizeCustomAudioInput(String customInput) {
+    String value = customInput?.trim()
+
+    if (!value) {
+        return null
+    }
+
+    def audioTagMatcher = value =~
+        /(?is)^<audio\s+src\s*=\s*(["'])(.*?)\1\s*\/?>$/
+
+    if (audioTagMatcher.matches()) {
+        value =
+            audioTagMatcher.group(2)?.trim()
+    }
+
+    String normalizedValue =
+        value?.toLowerCase()
+
+    if (
+        normalizedValue?.startsWith("https://") ||
+        normalizedValue?.startsWith("soundbank://")
+    ) {
+        return value
+    }
+
+    log.warn(
+        "Custom audio must be an HTTPS URI, a soundbank:// URI, " +
+        "or an <audio src=\"...\"/> tag containing one of those URIs."
+    )
+
+    return null
 }
 
 Map<String, String> soundUriMap() {
