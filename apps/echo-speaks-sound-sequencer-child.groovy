@@ -223,6 +223,7 @@ void renderMessageStep(
                 "Leave as Default Alexa voice for normal Alexa speech.",
             required: false,
             defaultValue: "default",
+            submitOnChange: true,
             options: voiceOptions(),
             width: 5,
             newLineAfter: false
@@ -1002,6 +1003,21 @@ Integer getDeviceVolume(echoDevice) {
  */
 
 Map parseVoiceSelection(String voiceSelection) {
+    Integer safeSeparatorIndex =
+        voiceSelection.indexOf('__')
+
+    if (safeSeparatorIndex >= 0) {
+        return [
+            name: voiceSelection.substring(
+                0,
+                safeSeparatorIndex
+            ),
+            locale: voiceSelection.substring(
+                safeSeparatorIndex + 2
+            ).replace('_', '-')
+        ]
+    }
+
     Integer separatorIndex =
         voiceSelection.indexOf('|')
 
@@ -1036,48 +1052,48 @@ Map voiceOptions() {
         "Matthew": "English (US) — Matthew",
         "Salli": "English (US) — Salli",
 
-        "Nicole|en-AU": "English (Australia) — Nicole",
-        "Russell|en-AU": "English (Australia) — Russell",
+        "Nicole__en_AU": "English (Australia) — Nicole",
+        "Russell__en_AU": "English (Australia) — Russell",
 
         "Amy": "English (Britain) — Amy",
         "Brian": "English (Britain) — Brian",
         "Emma": "English (Britain) — Emma",
 
-        "Aditi|en-IN": "English (India) — Aditi",
-        "Raveena|en-IN": "English (India) — Raveena",
-        "Geraint|en-GB-WLS": "English (Wales) — Geraint",
+        "Aditi__en_IN": "English (India) — Aditi",
+        "Raveena__en_IN": "English (India) — Raveena",
+        "Geraint__en_GB_WLS": "English (Wales) — Geraint",
 
-        "Chantal|fr-CA": "French (Canada) — Chantal",
-        "Celine|fr-FR": "French (France) — Celine",
-        "Lea|fr-FR": "French (France) — Lea",
-        "Mathieu|fr-FR": "French (France) — Mathieu",
+        "Chantal__fr_CA": "French (Canada) — Chantal",
+        "Celine__fr_FR": "French (France) — Celine",
+        "Lea__fr_FR": "French (France) — Lea",
+        "Mathieu__fr_FR": "French (France) — Mathieu",
 
-        "Hans|de-DE": "German — Hans",
-        "Marlene|de-DE": "German — Marlene",
-        "Vicki|de-DE": "German — Vicki",
+        "Hans__de_DE": "German — Hans",
+        "Marlene__de_DE": "German — Marlene",
+        "Vicki__de_DE": "German — Vicki",
 
-        "Aditi|hi-IN": "Hindi — Aditi",
+        "Aditi__hi_IN": "Hindi — Aditi",
 
-        "Bianca|it-IT": "Italian — Bianca",
-        "Carla|it-IT": "Italian — Carla",
-        "Giorgio|it-IT": "Italian — Giorgio",
+        "Bianca__it_IT": "Italian — Bianca",
+        "Carla__it_IT": "Italian — Carla",
+        "Giorgio__it_IT": "Italian — Giorgio",
 
-        "Mizuki|ja-JP": "Japanese — Mizuki",
-        "Takumi|ja-JP": "Japanese — Takumi",
+        "Mizuki__ja_JP": "Japanese — Mizuki",
+        "Takumi__ja_JP": "Japanese — Takumi",
 
-        "Camila|pt-BR": "Portuguese (Brazil) — Camila",
-        "Ricardo|pt-BR": "Portuguese (Brazil) — Ricardo",
-        "Vitoria|pt-BR": "Portuguese (Brazil) — Vitoria",
+        "Camila__pt_BR": "Portuguese (Brazil) — Camila",
+        "Ricardo__pt_BR": "Portuguese (Brazil) — Ricardo",
+        "Vitoria__pt_BR": "Portuguese (Brazil) — Vitoria",
 
-        "Lupe|es-US": "Spanish (US) — Lupe",
-        "Miguel|es-US": "Spanish (US) — Miguel",
-        "Penelope|es-US": "Spanish (US) — Penelope",
+        "Lupe__es_US": "Spanish (US) — Lupe",
+        "Miguel__es_US": "Spanish (US) — Miguel",
+        "Penelope__es_US": "Spanish (US) — Penelope",
 
-        "Conchita|es-ES": "Spanish (Spain) — Conchita",
-        "Enrique|es-ES": "Spanish (Spain) — Enrique",
-        "Lucia|es-ES": "Spanish (Spain) — Lucia",
+        "Conchita__es_ES": "Spanish (Spain) — Conchita",
+        "Enrique__es_ES": "Spanish (Spain) — Enrique",
+        "Lucia__es_ES": "Spanish (Spain) — Lucia",
 
-        "Mia|es-MX": "Spanish (Mexico) — Mia"
+        "Mia__es_MX": "Spanish (Mexico) — Mia"
     ]
 }
 
