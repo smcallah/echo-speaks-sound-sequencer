@@ -1,6 +1,6 @@
 definition(
     name: "Echo Speaks Sound Sequencer",
-    namespace: "monkeyland",
+    namespace: "smcallah",
     author: "Steven Callahan",
     description: "Creates and manages ordered Echo Speaks SSML sequences.",
     category: "Convenience",
@@ -24,7 +24,7 @@ Map mainPage() {
             app(
                 name: "sequenceChildren",
                 appName: "Echo Speaks Sound - Sequence",
-                namespace: "monkeyland",
+                namespace: "smcallah",
                 title: "Add a new Echo Speaks sound sequence",
                 multiple: true
             )

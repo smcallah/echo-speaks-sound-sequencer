@@ -1,10 +1,10 @@
 definition(
     name: "Echo Speaks Sound - Sequence",
-    namespace: "monkeyland",
+    namespace: "smcallah",
     author: "Steven Callahan",
     description: "An ordered sequence of Echo Speaks messages and sounds.",
     category: "Convenience",
-    parent: "monkeyland:Echo Speaks Sound Sequencer",
+    parent: "smcallah:Echo Speaks Sound Sequencer",
     iconUrl: "",
     iconX2Url: ""
 )
@@ -509,21 +509,23 @@ void removeStepSettings(String stepId) {
 
 void installed() {
     initializeStepState()
+    initializeVolumeRestoreState()
     updateAppLabel()
     initialize()
 }
 
 void updated() {
     unsubscribe()
-    unschedule()
 
     initializeStepState()
+    initializeVolumeRestoreState()
     updateAppLabel()
     initialize()
 }
 
 void uninstalled() {
     unsubscribe()
+    restorePendingVolumes(true)
     unschedule()
 }
 
@@ -696,33 +698,61 @@ void sendToEcho(
     String ssml
 ) {
     try {
-        Integer previousVolume = null
-
         if (changeVolume == true) {
-            previousVolume =
-                getDeviceVolume(echoDevice)
+            Integer previousVolume =
+                getOriginalVolume(echoDevice)
 
-            Integer temporaryVolume =
-                safeInteger(
-                    playbackVolume,
-                    40
+            if (
+                restoreVolume == true &&
+                previousVolume == null
+            ) {
+                log.warn(
+                    "${echoDevice.displayName}: skipping temporary " +
+                    "volume because its current volume could not " +
+                    "be read for restoration"
+                )
+            } else {
+                Integer temporaryVolume =
+                    safeInteger(
+                        playbackVolume,
+                        40
+                    )
+
+                if (debugLogging == true) {
+                    log.debug(
+                        "${echoDevice.displayName}: changing volume " +
+                        "from ${previousVolume} to ${temporaryVolume}"
+                    )
+                }
+
+                echoDevice.setVolume(
+                    temporaryVolume
                 )
 
-            if (debugLogging == true) {
-                log.debug(
-                    "${echoDevice.displayName}: changing volume " +
-                    "from ${previousVolume} to ${temporaryVolume}"
-                )
+                if (restoreVolume == true) {
+                    try {
+                        scheduleVolumeRestore(
+                            echoDevice,
+                            previousVolume
+                        )
+                    } catch (Exception scheduleException) {
+                        removePendingVolumeRestore(
+                            echoDevice.id.toString()
+                        )
+
+                        echoDevice.setVolume(
+                            previousVolume
+                        )
+
+                        throw scheduleException
+                    }
+                }
+
+                /*
+                 * Let the volume command get ahead of playback.
+                 */
+                pauseExecution(300)
             }
-
-            echoDevice.setVolume(
-                temporaryVolume
-            )
-
-            /*
-             * Let the volume command get ahead of playback.
-             */
-            pauseExecution(300)
         }
 
         /*
@@ -732,17 +762,6 @@ void sendToEcho(
         echoDevice.speak(
             ssml as String
         )
-
-        if (
-            changeVolume == true &&
-            restoreVolume == true &&
-            previousVolume != null
-        ) {
-            scheduleVolumeRestore(
-                echoDevice,
-                previousVolume
-            )
-        }
     } catch (Exception ex) {
         log.error(
             "Unable to send sequence to " +
@@ -756,94 +775,183 @@ void scheduleVolumeRestore(
     echoDevice,
     Integer previousVolume
 ) {
+    initializeVolumeRestoreState()
+
     Integer delaySeconds =
         safeInteger(
             volumeRestoreDelay,
             8
         )
 
-    Integer delayMilliseconds =
-        delaySeconds * 1000
+    Long restoreAt =
+        now() + (delaySeconds * 1000L)
 
-    Map restoreData = [
-        deviceId: echoDevice.id.toString(),
-        volume: previousVolume
+    String deviceId =
+        echoDevice.id.toString()
+
+    Map pendingRestores =
+        atomicState.pendingVolumeRestores ?: [:]
+
+    Map existingRestore =
+        pendingRestores[deviceId] as Map
+
+    Integer originalVolume =
+        safeInteger(
+            existingRestore?.volume,
+            previousVolume
+        )
+
+    pendingRestores[deviceId] = [
+        volume: originalVolume,
+        restoreAt: restoreAt
     ]
+
+    atomicState.pendingVolumeRestores =
+        pendingRestores
 
     if (debugLogging == true) {
         log.debug(
             "${echoDevice.displayName}: scheduling volume " +
-            "restore to ${previousVolume} in " +
+            "restore to ${originalVolume} in " +
             "${delaySeconds} seconds"
         )
     }
 
+    scheduleNextVolumeRestore()
+}
+
+void initializeVolumeRestoreState() {
+    if (!(atomicState.pendingVolumeRestores instanceof Map)) {
+        atomicState.pendingVolumeRestores = [:]
+    }
+}
+
+void removePendingVolumeRestore(String deviceId) {
+    initializeVolumeRestoreState()
+
+    Map pendingRestores =
+        atomicState.pendingVolumeRestores ?: [:]
+
+    pendingRestores.remove(deviceId)
+
+    atomicState.pendingVolumeRestores =
+        pendingRestores
+}
+
+Integer getOriginalVolume(echoDevice) {
+    initializeVolumeRestoreState()
+
+    String deviceId =
+        echoDevice.id.toString()
+
+    Map pendingRestore =
+        atomicState.pendingVolumeRestores[deviceId] as Map
+
+    if (pendingRestore?.volume != null) {
+        return safeInteger(
+            pendingRestore.volume,
+            null
+        )
+    }
+
+    return getDeviceVolume(echoDevice)
+}
+
+void scheduleNextVolumeRestore() {
+    initializeVolumeRestoreState()
+
+    List<Long> restoreTimes =
+        atomicState.pendingVolumeRestores
+            .values()
+            .collect { Map pendingRestore ->
+                pendingRestore.restoreAt as Long
+            }
+
+    if (restoreTimes.isEmpty()) {
+        unschedule("restorePendingVolumes")
+        return
+    }
+
+    Long delayMilliseconds =
+        Math.max(
+            1L,
+            restoreTimes.min() - now()
+        )
+
     runInMillis(
         delayMilliseconds,
-        "restoreDeviceVolume",
-        [
-            data: restoreData,
-            overwrite: false
-        ]
+        "restorePendingVolumes",
+        [overwrite: true]
     )
 }
 
-void restoreDeviceVolume(Map data) {
-    if (
-        !data?.deviceId ||
-        data?.volume == null
-    ) {
-        log.warn(
-            "Volume restore was called without valid device data"
-        )
-        return
-    }
+void restorePendingVolumes(Boolean restoreAll = false) {
+    initializeVolumeRestoreState()
 
-    def echoDevice = echoDevices?.find {
-        it.id.toString() ==
-            data.deviceId.toString()
-    }
+    Long currentTime = now()
+    Map pendingRestores =
+        atomicState.pendingVolumeRestores ?: [:]
+    Map remainingRestores = [:]
 
-    if (!echoDevice) {
-        log.warn(
-            "Unable to find Echo device ${data.deviceId} " +
-            "for volume restoration"
-        )
-        return
-    }
+    pendingRestores.each {
+        String deviceId,
+        Map pendingRestore ->
+        Long restoreAt =
+            pendingRestore.restoreAt as Long
 
-    Integer previousVolume =
-        safeInteger(
-            data.volume,
-            null
-        )
-
-    if (previousVolume == null) {
-        log.warn(
-            "No valid previous volume was available for " +
-            "${echoDevice.displayName}"
-        )
-        return
-    }
-
-    try {
-        if (debugLogging == true) {
-            log.debug(
-                "${echoDevice.displayName}: restoring volume " +
-                "to ${previousVolume}"
-            )
+        if (!restoreAll && restoreAt > currentTime) {
+            remainingRestores[deviceId] =
+                pendingRestore
+            return
         }
 
-        echoDevice.setVolume(
-            previousVolume
-        )
-    } catch (Exception ex) {
-        log.warn(
-            "Unable to restore volume on " +
-            "${echoDevice.displayName}: " +
-            "${ex.class.simpleName}: ${ex.message}"
-        )
+        def echoDevice = echoDevices?.find {
+            it.id.toString() == deviceId
+        }
+
+        if (!echoDevice) {
+            log.warn(
+                "Unable to find Echo device ${deviceId} " +
+                "for volume restoration"
+            )
+            return
+        }
+
+        Integer previousVolume =
+            safeInteger(
+                pendingRestore.volume,
+                null
+            )
+
+        try {
+            if (debugLogging == true) {
+                log.debug(
+                    "${echoDevice.displayName}: restoring volume " +
+                    "to ${previousVolume}"
+                )
+            }
+
+            echoDevice.setVolume(
+                previousVolume
+            )
+        } catch (Exception ex) {
+            log.warn(
+                "Unable to restore volume on " +
+                "${echoDevice.displayName}: " +
+                "${ex.class.simpleName}: ${ex.message}"
+            )
+
+            pendingRestore.restoreAt =
+                currentTime + 30000L
+            remainingRestores[deviceId] =
+                pendingRestore
+        }
     }
+
+    atomicState.pendingVolumeRestores =
+        remainingRestores
+
+    scheduleNextVolumeRestore()
 }
 
 Integer getDeviceVolume(echoDevice) {
