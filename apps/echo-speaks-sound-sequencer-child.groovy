@@ -259,7 +259,16 @@ void renderSoundStep(
                 "Select a preset or choose a custom URI.",
             required: true,
             submitOnChange: true,
-            options: soundOptions()
+            options: soundOptions(),
+            width: 5,
+            newLineAfter: false
+        )
+
+        renderStepControls(
+            stepId,
+            index,
+            stepCount,
+            true
         )
 
         if (selectedSound == "custom") {
@@ -270,15 +279,11 @@ void renderSoundStep(
                 description:
                     "Use a soundbank:// URI or a directly accessible " +
                     "HTTPS audio URL.",
-                required: true
+                required: true,
+                width: 12,
+                newLine: true
             )
         }
-
-        renderStepControls(
-            stepId,
-            index,
-            stepCount
-        )
     }
 }
 
@@ -289,27 +294,41 @@ void renderSoundStep(
 void renderStepControls(
     String stepId,
     Integer index,
-    Integer stepCount
+    Integer stepCount,
+    Boolean compactRow = false
 ) {
+    Boolean hasMoveUp = index > 0
+    Boolean hasMoveDown = index < stepCount - 1
+
     input(
         name: "remove_${stepId}",
         type: "button",
-        title: "− Remove this step"
+        title: "− Remove this step",
+        width: compactRow ? 3 : 12,
+        newLineAfter:
+            compactRow ?
+                (!hasMoveUp && !hasMoveDown) :
+                true
     )
 
-    if (index > 0) {
+    if (hasMoveUp) {
         input(
             name: "move_up_${stepId}",
             type: "button",
-            title: "↑ Move up"
+            title: "↑ Move up",
+            width: compactRow ? 2 : 12,
+            newLineAfter:
+                compactRow ? !hasMoveDown : true
         )
     }
 
-    if (index < stepCount - 1) {
+    if (hasMoveDown) {
         input(
             name: "move_down_${stepId}",
             type: "button",
-            title: "↓ Move down"
+            title: "↓ Move down",
+            width: compactRow ? 2 : 12,
+            newLineAfter: true
         )
     }
 }
