@@ -131,7 +131,7 @@ A message step can:
 - Speak custom text
 - Use the sequence name as the message
 - Use the default Alexa voice
-- Use a supported Polly voice
+- Use any Amazon Polly voice supported by Alexa SSML
 
 Example:
 
@@ -145,6 +145,10 @@ The app builds the SSML internally:
 ```xml
 <voice name="Matthew">Dinner is ready!</voice>
 ```
+
+Voices are grouped by language and locale. When a locale-specific voice is
+selected, the app adds the matching `<lang>` element automatically. Message
+text should be written in the language associated with the selected voice.
 
 ### Sound Step
 

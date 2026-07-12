@@ -223,13 +223,16 @@ void renderMessageStep(
                 "Leave as Default Alexa voice for normal Alexa speech.",
             required: false,
             defaultValue: "default",
-            options: voiceOptions()
+            options: voiceOptions(),
+            width: 5,
+            newLineAfter: false
         )
 
         renderStepControls(
             stepId,
             index,
-            stepCount
+            stepCount,
+            true
         )
     }
 }
@@ -633,19 +636,40 @@ void appendMessageStep(
         return
     }
 
-    String voice =
+    String voiceSelection =
         settings["stepVoice_${stepId}"]?.toString()
 
     String escapedMessage =
         escapeXmlText(message)
 
-    if (voice && voice != "default") {
+    if (voiceSelection && voiceSelection != "default") {
+        Map voiceDetails =
+            parseVoiceSelection(voiceSelection)
+        String voice =
+            voiceDetails.name
+        String locale =
+            voiceDetails.locale
+
         ssml.append('<voice name="')
         ssml.append(
             escapeXmlAttribute(voice)
         )
         ssml.append('">')
+
+        if (locale) {
+            ssml.append('<lang xml:lang="')
+            ssml.append(
+                escapeXmlAttribute(locale)
+            )
+            ssml.append('">')
+        }
+
         ssml.append(escapedMessage)
+
+        if (locale) {
+            ssml.append('</lang>')
+        }
+
         ssml.append('</voice>')
     } else {
         ssml.append(escapedMessage)
@@ -977,20 +1001,83 @@ Integer getDeviceVolume(echoDevice) {
  * Preset voices and sounds
  */
 
+Map parseVoiceSelection(String voiceSelection) {
+    Integer separatorIndex =
+        voiceSelection.indexOf('|')
+
+    if (separatorIndex < 0) {
+        return [
+            name: voiceSelection,
+            locale: null
+        ]
+    }
+
+    return [
+        name: voiceSelection.substring(
+            0,
+            separatorIndex
+        ),
+        locale: voiceSelection.substring(
+            separatorIndex + 1
+        )
+    ]
+}
+
 Map voiceOptions() {
     return [
         "default": "Default Alexa voice",
-        "Matthew": "Matthew",
-        "Joanna": "Joanna",
-        "Amy": "Amy",
-        "Brian": "Brian",
-        "Emma": "Emma",
-        "Ivy": "Ivy",
-        "Joey": "Joey",
-        "Justin": "Justin",
-        "Kendra": "Kendra",
-        "Kimberly": "Kimberly",
-        "Salli": "Salli"
+
+        "Ivy": "English (US) — Ivy",
+        "Joanna": "English (US) — Joanna",
+        "Joey": "English (US) — Joey",
+        "Justin": "English (US) — Justin",
+        "Kendra": "English (US) — Kendra",
+        "Kimberly": "English (US) — Kimberly",
+        "Matthew": "English (US) — Matthew",
+        "Salli": "English (US) — Salli",
+
+        "Nicole|en-AU": "English (Australia) — Nicole",
+        "Russell|en-AU": "English (Australia) — Russell",
+
+        "Amy": "English (Britain) — Amy",
+        "Brian": "English (Britain) — Brian",
+        "Emma": "English (Britain) — Emma",
+
+        "Aditi|en-IN": "English (India) — Aditi",
+        "Raveena|en-IN": "English (India) — Raveena",
+        "Geraint|en-GB-WLS": "English (Wales) — Geraint",
+
+        "Chantal|fr-CA": "French (Canada) — Chantal",
+        "Celine|fr-FR": "French (France) — Celine",
+        "Lea|fr-FR": "French (France) — Lea",
+        "Mathieu|fr-FR": "French (France) — Mathieu",
+
+        "Hans|de-DE": "German — Hans",
+        "Marlene|de-DE": "German — Marlene",
+        "Vicki|de-DE": "German — Vicki",
+
+        "Aditi|hi-IN": "Hindi — Aditi",
+
+        "Bianca|it-IT": "Italian — Bianca",
+        "Carla|it-IT": "Italian — Carla",
+        "Giorgio|it-IT": "Italian — Giorgio",
+
+        "Mizuki|ja-JP": "Japanese — Mizuki",
+        "Takumi|ja-JP": "Japanese — Takumi",
+
+        "Camila|pt-BR": "Portuguese (Brazil) — Camila",
+        "Ricardo|pt-BR": "Portuguese (Brazil) — Ricardo",
+        "Vitoria|pt-BR": "Portuguese (Brazil) — Vitoria",
+
+        "Lupe|es-US": "Spanish (US) — Lupe",
+        "Miguel|es-US": "Spanish (US) — Miguel",
+        "Penelope|es-US": "Spanish (US) — Penelope",
+
+        "Conchita|es-ES": "Spanish (Spain) — Conchita",
+        "Enrique|es-ES": "Spanish (Spain) — Enrique",
+        "Lucia|es-ES": "Spanish (Spain) — Lucia",
+
+        "Mia|es-MX": "Spanish (Mexico) — Mia"
     ]
 }
 
