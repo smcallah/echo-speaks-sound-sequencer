@@ -566,7 +566,10 @@ void switchHandler(evt) {
     }
 
     if (debugLogging == true) {
-        log.debug "Sending SSML: ${ssml}"
+        log.debug(
+            "Sending SSML (‹ and › represent angle brackets): " +
+            "${formatSsmlForLog(ssml)}"
+        )
         log.debug(
             "Echo devices: " +
             "${echoDevices?.collect { it.displayName }}"
@@ -1066,8 +1069,19 @@ Map parseVoiceSelection(String voiceSelection) {
 
 Map voiceLocaleMap() {
     return [
+        "Ivy": "en-US",
+        "Joanna": "en-US",
+        "Joey": "en-US",
+        "Justin": "en-US",
+        "Kendra": "en-US",
+        "Kimberly": "en-US",
+        "Matthew": "en-US",
+        "Salli": "en-US",
         "Nicole": "en-AU",
         "Russell": "en-AU",
+        "Amy": "en-GB",
+        "Brian": "en-GB",
+        "Emma": "en-GB",
         "Raveena": "en-IN",
         "Geraint": "en-GB-WLS",
         "Chantal": "fr-CA",
@@ -1418,4 +1432,10 @@ String escapeXmlAttribute(String value) {
     return escapeXmlText(value)
         .replace('"', "&quot;")
         .replace("'", "&apos;")
+}
+
+String formatSsmlForLog(String value) {
+    return value
+        .replace("<", "‹")
+        .replace(">", "›")
 }
