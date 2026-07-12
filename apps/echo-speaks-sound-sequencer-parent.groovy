@@ -1,5 +1,5 @@
 definition(
-    name: "Echo SSML Sequences",
+    name: "Echo Speaks Sound Sequencer",
     namespace: "monkeyland",
     author: "Steven Callahan",
     description: "Creates and manages ordered Echo Speaks SSML sequences.",
@@ -16,16 +16,16 @@ preferences {
 Map mainPage() {
     dynamicPage(
         name: "mainPage",
-        title: "Echo SSML Sequences",
+        title: "Echo Speaks Sound Sequencer",
         install: true,
         uninstall: true
     ) {
         section("Sequences") {
             app(
                 name: "sequenceChildren",
-                appName: "Echo SSML Sequence Child",
+                appName: "Echo Speaks Sound - Sequence",
                 namespace: "monkeyland",
-                title: "Add a new Echo sequence",
+                title: "Add a new Echo Speaks sound sequence",
                 multiple: true
             )
         }
@@ -41,13 +41,13 @@ Map mainPage() {
 }
 
 void installed() {
-    log.info "Echo SSML Sequences parent installed"
+    log.info "Echo Speaks Sound Sequencer parent installed"
 }
 
 void updated() {
-    log.info "Echo SSML Sequences parent updated"
+    log.info "Echo Speaks Sound Sequencer parent updated"
 }
 
 void uninstalled() {
-    log.info "Echo SSML Sequences parent uninstalled"
+    log.info "Echo Speaks Sound Sequencer parent uninstalled"
 }

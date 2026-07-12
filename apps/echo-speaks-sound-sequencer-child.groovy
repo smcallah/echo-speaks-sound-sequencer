@@ -1,10 +1,10 @@
 definition(
-    name: "Echo SSML Sequence Child",
+    name: "Echo Speaks Sound - Sequence",
     namespace: "monkeyland",
     author: "Steven Callahan",
     description: "An ordered sequence of Echo Speaks messages and sounds.",
     category: "Convenience",
-    parent: "monkeyland:Echo SSML Sequences",
+    parent: "monkeyland:Echo Speaks Sound Sequencer",
     iconUrl: "",
     iconX2Url: ""
 )
@@ -22,7 +22,7 @@ Map mainPage() {
 
     dynamicPage(
         name: "mainPage",
-        title: "Echo SSML Sequence",
+        title: "Echo Speaks Sound - Sequence",
         install: true,
         uninstall: true
     ) {
