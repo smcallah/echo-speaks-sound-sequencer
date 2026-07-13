@@ -1,3 +1,26 @@
+/**
+ * Echo Speaks Sound Sequencer child app
+ *
+ * Copyright 2026 Steven Callahan
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *     https://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+
+import groovy.transform.Field
+
+@Field static final String APP_VERSION = "26.3.1"
+@Field static final Integer DEBUG_LOG_SECONDS = 1800
+
 definition(
     name: "Echo Speaks Sound - Sequence",
     namespace: "smcallah",
@@ -6,7 +29,13 @@ definition(
     category: "Convenience",
     parent: "smcallah:Echo Speaks Sound Sequencer",
     iconUrl: "",
-    iconX2Url: ""
+    iconX2Url: "",
+    importUrl:
+        "https://raw.githubusercontent.com/smcallah/" +
+        "echo-speaks-sound-sequencer/main/apps/" +
+        "echo-speaks-sound-sequencer-child.groovy",
+    documentationLink:
+        "https://github.com/smcallah/echo-speaks-sound-sequencer"
 )
 
 preferences {
@@ -53,7 +82,7 @@ Map mainPage() {
         section("Echo devices") {
             input(
                 name: "echoDevices",
-                type: "capability.speechSynthesis",
+                type: "device.EchoSpeaksDevice",
                 title: "Echo Speaks devices",
                 description: "Select one or more Echo devices.",
                 required: true,
@@ -134,8 +163,11 @@ Map mainPage() {
                 name: "debugLogging",
                 type: "bool",
                 title: "Enable debug logging",
+                description: "Turns off automatically after 30 minutes.",
                 defaultValue: false
             )
+
+            paragraph("Version ${APP_VERSION}")
         }
     }
 }
@@ -515,6 +547,7 @@ void installed() {
     initializeNativeVolumeRestoreState()
     updateAppLabel()
     initialize()
+    configureDebugLogging()
 }
 
 void updated() {
@@ -525,6 +558,7 @@ void updated() {
     initializeNativeVolumeRestoreState()
     updateAppLabel()
     initialize()
+    configureDebugLogging()
 }
 
 void uninstalled() {
@@ -603,6 +637,28 @@ void switchHandler(evt) {
         )
     }
 
+}
+
+void configureDebugLogging() {
+    unschedule("disableDebugLogging")
+
+    if (debugLogging == true) {
+        runIn(
+            DEBUG_LOG_SECONDS,
+            "disableDebugLogging",
+            [overwrite: true]
+        )
+    }
+}
+
+void disableDebugLogging() {
+    if (debugLogging == true) {
+        log.debug "Disabling debug logging after 30 minutes"
+        app.updateSetting(
+            "debugLogging",
+            [value: "false", type: "bool"]
+        )
+    }
 }
 
 List<String> buildSequenceSsmlChunks() {

@@ -347,13 +347,15 @@ After changing the code in GitHub:
 
 ## License
 
-Choose and add a license before publishing the repository.
+Copyright 2026 Steven Callahan.
 
-Common options:
+Licensed under the [Apache License 2.0](LICENSE).
 
-- MIT License
-- Apache License 2.0
-- GNU General Public License v3.0
+## Versioning
+
+Releases use `YY.Q.release`, where `YY` is the two-digit year, `Q` is the
+calendar quarter, and `release` starts at 1 each quarter. The current version
+is `26.3.1`.
 
 ## Credits
 
