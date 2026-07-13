@@ -18,7 +18,7 @@
 
 import groovy.transform.Field
 
-@Field static final String APP_VERSION = "26.3.5"
+@Field static final String APP_VERSION = "26.3.6"
 @Field static final Integer DEBUG_LOG_SECONDS = 1800
 
 definition(
@@ -556,6 +556,7 @@ void updated() {
     initializeStepState()
     initializeVolumeRestoreState()
     initializeNativeVolumeRestoreState()
+    discardLegacyNativeVolumeRestoreState()
     updateAppLabel()
     initialize()
     configureDebugLogging()
@@ -574,6 +575,18 @@ void initialize() {
             triggerSwitch,
             "switch.on",
             switchHandler
+        )
+    }
+
+    if (
+        echoDevices &&
+        changeVolume == true &&
+        restoreVolume == true
+    ) {
+        subscribe(
+            echoDevices,
+            "volume",
+            nativeVolumeHandler
         )
     }
 }
@@ -985,54 +998,64 @@ void sendToEcho(
                         40
                     )
 
-                if (debugLogging == true) {
-                    log.debug(
-                        "${echoDevice.displayName}: changing volume " +
-                        "from ${previousVolume} to ${temporaryVolume}"
-                    )
-                }
+                volumeWasChanged =
+                    previousVolume == null ||
+                    previousVolume != temporaryVolume
 
-                volumeWasChanged = true
-
-                if (!useNativeSequence) {
-                    echoDevice.setVolume(
-                        temporaryVolume
-                    )
-                }
-
-                if (
-                    restoreVolume == true &&
-                    !useNativeSequence
-                ) {
-                    try {
-                        scheduleVolumeRestore(
-                            echoDevice,
-                            previousVolume
+                if (volumeWasChanged) {
+                    if (debugLogging == true) {
+                        log.debug(
+                            "${echoDevice.displayName}: changing volume " +
+                            "from ${previousVolume} to ${temporaryVolume}"
                         )
-                    } catch (Exception scheduleException) {
-                        removePendingVolumeRestore(
-                            echoDevice.id.toString()
-                        )
-
-                        echoDevice.setVolume(
-                            previousVolume
-                        )
-
-                        throw scheduleException
                     }
-                } else if (
-                    restoreVolume == true &&
-                    useNativeSequence
-                ) {
-                    trackNativeVolumeRestore(
-                        echoDevice,
-                        previousVolume
-                    )
-                }
 
-                if (!useNativeSequence) {
-                    /* Let the separate volume command get ahead of playback. */
-                    pauseExecution(300)
+                    if (!useNativeSequence) {
+                        echoDevice.setVolume(
+                            temporaryVolume
+                        )
+                    }
+
+                    if (
+                        restoreVolume == true &&
+                        !useNativeSequence
+                    ) {
+                        try {
+                            scheduleVolumeRestore(
+                                echoDevice,
+                                previousVolume
+                            )
+                        } catch (Exception scheduleException) {
+                            removePendingVolumeRestore(
+                                echoDevice.id.toString()
+                            )
+
+                            echoDevice.setVolume(
+                                previousVolume
+                            )
+
+                            throw scheduleException
+                        }
+                    } else if (
+                        restoreVolume == true &&
+                        useNativeSequence
+                    ) {
+                        trackNativeVolumeRestore(
+                            echoDevice,
+                            previousVolume,
+                            temporaryVolume
+                        )
+                    }
+
+                    if (!useNativeSequence) {
+                        /* Let the volume command get ahead of playback. */
+                        pauseExecution(300)
+                    }
+                } else if (debugLogging == true) {
+                    log.debug(
+                        "${echoDevice.displayName}: volume is already " +
+                        "${temporaryVolume}; no temporary change needed"
+                    )
                 }
             }
         }
@@ -1252,19 +1275,19 @@ Integer getOriginalVolume(echoDevice) {
     String deviceId =
         echoDevice.id.toString()
 
+    Map nativeRestore = normalizeNativeVolumeRestore(
+        atomicState.nativeVolumeRestores[deviceId]
+    )
     Integer nativeOriginalVolume =
-        safeInteger(
-            atomicState.nativeVolumeRestores[deviceId],
-            null
-        )
+        safeInteger(nativeRestore?.volume, null)
 
     if (nativeOriginalVolume != null) {
         Integer currentVolume =
             getDeviceVolume(echoDevice)
         Integer temporaryVolume =
             safeInteger(
-                playbackVolume,
-                40
+                nativeRestore?.temporaryVolume,
+                safeInteger(playbackVolume, 40)
             )
 
         if (
@@ -1299,7 +1322,8 @@ void initializeNativeVolumeRestoreState() {
 
 void trackNativeVolumeRestore(
     echoDevice,
-    Integer previousVolume
+    Integer previousVolume,
+    Integer temporaryVolume
 ) {
     initializeNativeVolumeRestoreState()
 
@@ -1309,11 +1333,97 @@ void trackNativeVolumeRestore(
         echoDevice.id.toString()
 
     if (nativeRestores[deviceId] == null) {
-        nativeRestores[deviceId] =
-            previousVolume
+        nativeRestores[deviceId] = [
+            volume: previousVolume,
+            temporaryVolume: temporaryVolume,
+            sawTemporaryVolume: false
+        ]
         atomicState.nativeVolumeRestores =
             nativeRestores
     }
+}
+
+void nativeVolumeHandler(evt) {
+    initializeNativeVolumeRestoreState()
+
+    String deviceId =
+        evt?.deviceId?.toString() ?:
+            evt?.device?.id?.toString()
+    Integer currentVolume =
+        safeInteger(evt?.value, null)
+
+    if (!deviceId || currentVolume == null) {
+        return
+    }
+
+    Map nativeRestores =
+        atomicState.nativeVolumeRestores ?: [:]
+    Map nativeRestore =
+        normalizeNativeVolumeRestore(
+            nativeRestores[deviceId]
+        )
+
+    if (!nativeRestore) {
+        return
+    }
+
+    Integer temporaryVolume =
+        safeInteger(
+            nativeRestore.temporaryVolume,
+            safeInteger(playbackVolume, 40)
+        )
+
+    if (currentVolume == temporaryVolume) {
+        nativeRestore.sawTemporaryVolume = true
+        nativeRestores[deviceId] = nativeRestore
+    } else if (nativeRestore.sawTemporaryVolume == true) {
+        nativeRestores.remove(deviceId)
+
+        if (debugLogging == true) {
+            log.debug(
+                "${evt?.device?.displayName ?: deviceId}: native " +
+                "volume restore completed; cleared saved state"
+            )
+        }
+    }
+
+    atomicState.nativeVolumeRestores =
+        nativeRestores
+}
+
+Map normalizeNativeVolumeRestore(nativeRestore) {
+    if (nativeRestore instanceof Map) {
+        return nativeRestore as Map
+    }
+
+    Integer previousVolume =
+        safeInteger(nativeRestore, null)
+
+    if (previousVolume == null) {
+        return null
+    }
+
+    return [
+        volume: previousVolume,
+        temporaryVolume: safeInteger(playbackVolume, 40),
+        sawTemporaryVolume: false
+    ]
+}
+
+void discardLegacyNativeVolumeRestoreState() {
+    initializeNativeVolumeRestoreState()
+
+    Map nativeRestores =
+        atomicState.nativeVolumeRestores ?: [:]
+
+    nativeRestores.findAll { deviceId, nativeRestore ->
+        !(nativeRestore instanceof Map)
+    }.keySet().each { deviceId ->
+        nativeRestores.remove(deviceId)
+    }
+
+    atomicState.nativeVolumeRestores =
+        nativeRestores
 }
 
 void removeNativeVolumeRestore(String deviceId) {
@@ -1342,9 +1452,31 @@ void restoreNativePendingVolumes() {
 
         if (echoDevice) {
             try {
-                echoDevice.setVolume(
-                    safeInteger(previousVolume, 40)
-                )
+                Map nativeRestore =
+                    normalizeNativeVolumeRestore(
+                        previousVolume
+                    )
+                Integer originalVolume =
+                    safeInteger(
+                        nativeRestore?.volume,
+                        null
+                    )
+                Integer temporaryVolume =
+                    safeInteger(
+                        nativeRestore?.temporaryVolume,
+                        safeInteger(playbackVolume, 40)
+                    )
+                Integer currentVolume =
+                    getDeviceVolume(echoDevice)
+
+                if (
+                    originalVolume != null &&
+                    currentVolume == temporaryVolume
+                ) {
+                    echoDevice.setVolume(
+                        originalVolume
+                    )
+                }
             } catch (Exception ex) {
                 log.warn(
                     "Unable to restore volume on " +

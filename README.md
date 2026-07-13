@@ -356,7 +356,7 @@ Licensed under the [Apache License 2.0](LICENSE).
 
 Releases use `YY.Q.release`, where `YY` is the two-digit year, `Q` is the
 calendar quarter, and `release` starts at 1 each quarter. The current version
-is `26.3.5`.
+is `26.3.6`.
 
 ## Credits
 
