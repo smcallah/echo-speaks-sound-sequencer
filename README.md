@@ -228,8 +228,8 @@ Echo Speaks sequence item at 390 characters or fewer. It
 splits long messages at sentence boundaries when possible, then falls back to
 word boundaries. It rebuilds complete voice and locale tags around each part
 and groups sound and message steps into ordered commands without splitting an
-audio tag. Multi-part sequences use Echo Speaks' native
-`executeSequenceCommand()` queue when the selected device supports it.
+audio tag. Sequences use Echo Speaks' native `executeSequenceCommand()` queue
+when the selected device supports it, including sequences with a single step.
 
 When debug logging is enabled, the app reports the total generated SSML
 length, the number of commands, and the length and contents of each command.
@@ -241,9 +241,10 @@ Hubitat Rule Machine may strip or alter SSML tags entered into text fields. Echo
 This app avoids those paths by:
 
 1. Building SSML inside the Groovy app.
-2. Calling the Echo Speaks device `speak(String)` command directly.
+2. Sending the SSML through the Echo Speaks device's native sequence command.
 
-That allows `<voice>` and `<audio>` elements to reach the working Echo Speaks device command without being rewritten by Rule Machine or the Echo Speaks Actions response editor.
+That allows `<voice>` and `<audio>` elements to reach Echo Speaks without being
+rewritten by Rule Machine or the Echo Speaks Actions response editor.
 
 ## Important Notes
 
@@ -355,7 +356,7 @@ Licensed under the [Apache License 2.0](LICENSE).
 
 Releases use `YY.Q.release`, where `YY` is the two-digit year, `Q` is the
 calendar quarter, and `release` starts at 1 each quarter. The current version
-is `26.3.3`.
+is `26.3.4`.
 
 ## Credits
 

@@ -18,7 +18,7 @@
 
 import groovy.transform.Field
 
-@Field static final String APP_VERSION = "26.3.3"
+@Field static final String APP_VERSION = "26.3.4"
 @Field static final Integer DEBUG_LOG_SECONDS = 1800
 
 definition(
@@ -1215,13 +1215,6 @@ Boolean canUseNativeSequence(
     echoDevice,
     List<String> ssmlChunks
 ) {
-    if (
-        ssmlChunks.size() < 2 &&
-        changeVolume != true
-    ) {
-        return false
-    }
-
     Boolean containsSequenceDelimiter =
         ssmlChunks.any { String chunk ->
             chunk.contains(",,") ||
