@@ -512,6 +512,7 @@ void removeStepSettings(String stepId) {
 void installed() {
     initializeStepState()
     initializeVolumeRestoreState()
+    initializeNativeVolumeRestoreState()
     updateAppLabel()
     initialize()
 }
@@ -521,6 +522,7 @@ void updated() {
 
     initializeStepState()
     initializeVolumeRestoreState()
+    initializeNativeVolumeRestoreState()
     updateAppLabel()
     initialize()
 }
@@ -528,6 +530,7 @@ void updated() {
 void uninstalled() {
     unsubscribe()
     restorePendingVolumes(true)
+    restoreNativePendingVolumes()
     unschedule()
 }
 
@@ -554,9 +557,10 @@ void updateAppLabel() {
  */
 
 void switchHandler(evt) {
-    String ssml = buildSequenceSsml()
+    List<String> ssmlChunks =
+        buildSequenceSsmlChunks()
 
-    if (!ssml) {
+    if (ssmlChunks.isEmpty()) {
         log.error(
             "The sequence contains no playable content. " +
             "Add and configure at least one message or sound step."
@@ -566,10 +570,26 @@ void switchHandler(evt) {
     }
 
     if (debugLogging == true) {
+        Integer totalLength =
+            ssmlChunks.sum { String chunk ->
+                chunk.length()
+            } as Integer
+
         log.debug(
-            "Sending SSML (‹ and › represent angle brackets): " +
-            "${formatSsmlForLog(ssml)}"
+            "Sequence SSML length: ${totalLength} characters; " +
+            "sending ${ssmlChunks.size()} command(s)"
         )
+
+        ssmlChunks.eachWithIndex {
+            String chunk,
+            Integer chunkIndex ->
+            log.debug(
+                "SSML chunk ${chunkIndex + 1} " +
+                "(${chunk.length()} characters; ‹ and › represent " +
+                "angle brackets): ${formatSsmlForLog(chunk)}"
+            )
+        }
+
         log.debug(
             "Echo devices: " +
             "${echoDevices?.collect { it.displayName }}"
@@ -579,16 +599,15 @@ void switchHandler(evt) {
     echoDevices?.each { echoDevice ->
         sendToEcho(
             echoDevice,
-            ssml
+            ssmlChunks
         )
     }
 
 }
 
-String buildSequenceSsml() {
-    StringBuilder ssml =
-        new StringBuilder()
-
+List<String> buildSequenceSsmlChunks() {
+    Integer maximumChunkLength = 390
+    List<String> stepFragments = []
     List<Map> steps = getSequenceSteps()
 
     steps.eachWithIndex { Map step, Integer index ->
@@ -596,29 +615,63 @@ String buildSequenceSsml() {
         String stepType = step.type.toString()
 
         if (stepType == "message") {
-            appendMessageStep(
-                ssml,
-                stepId,
-                index
+            stepFragments.addAll(
+                buildMessageStepFragments(
+                    stepId,
+                    index,
+                    maximumChunkLength
+                )
             )
         } else if (stepType == "sound") {
-            appendSoundStep(
-                ssml,
-                stepId,
-                index
-            )
+            String soundFragment =
+                buildSoundStepFragment(
+                    stepId,
+                    index
+                )
+
+            if (soundFragment) {
+                stepFragments.add(soundFragment)
+            }
         }
     }
 
-    String result = ssml.toString()
+    List<String> chunks = []
+    StringBuilder currentChunk =
+        new StringBuilder()
 
-    return result?.trim() ? result : null
+    stepFragments.each { String fragment ->
+        if (fragment.length() > maximumChunkLength) {
+            log.error(
+                "Skipping a playback step because its generated SSML " +
+                "is ${fragment.length()} characters, exceeding the " +
+                "safe Echo Speaks limit of ${maximumChunkLength}."
+            )
+            return
+        }
+
+        if (
+            currentChunk.length() > 0 &&
+            currentChunk.length() + fragment.length() >
+                maximumChunkLength
+        ) {
+            chunks.add(currentChunk.toString())
+            currentChunk = new StringBuilder()
+        }
+
+        currentChunk.append(fragment)
+    }
+
+    if (currentChunk.length() > 0) {
+        chunks.add(currentChunk.toString())
+    }
+
+    return chunks
 }
 
-void appendMessageStep(
-    StringBuilder ssml,
+List<String> buildMessageStepFragments(
     String stepId,
-    Integer index
+    Integer index,
+    Integer maximumChunkLength
 ) {
     Boolean useSequenceName =
         settings["stepUseName_${stepId}"] == true
@@ -637,7 +690,7 @@ void appendMessageStep(
             "Skipping message step ${index + 1}: " +
             "no message was configured."
         )
-        return
+        return []
     }
 
     String voiceSelection =
@@ -650,8 +703,8 @@ void appendMessageStep(
         )
     }
 
-    String escapedMessage =
-        escapeXmlText(message)
+    String prefix = ""
+    String suffix = ""
 
     if (voiceSelection && voiceSelection != "default") {
         Map voiceDetails =
@@ -661,34 +714,153 @@ void appendMessageStep(
         String locale =
             voiceDetails.locale
 
-        ssml.append('<voice name="')
-        ssml.append(
-            escapeXmlAttribute(voice)
+        prefix =
+            '<voice name="' +
+            escapeXmlAttribute(voice) +
+            '">'
+        suffix = '</voice>'
+
+        if (locale) {
+            prefix +=
+                '<lang xml:lang="' +
+                escapeXmlAttribute(locale) +
+                '">'
+            suffix =
+                '</lang>' + suffix
+        }
+    }
+
+    Integer availableTextLength =
+        maximumChunkLength -
+        prefix.length() -
+        suffix.length()
+
+    if (availableTextLength < 1) {
+        log.error(
+            "Skipping message step ${index + 1}: voice markup " +
+            "exceeds the safe Echo Speaks command length."
         )
-        ssml.append('">')
+        return []
+    }
 
-        if (locale) {
-            ssml.append('<lang xml:lang="')
-            ssml.append(
-                escapeXmlAttribute(locale)
-            )
-            ssml.append('">')
-        }
+    List<String> messageParts =
+        splitMessageForSsml(
+            message,
+            availableTextLength
+        )
 
-        ssml.append(escapedMessage)
-
-        if (locale) {
-            ssml.append('</lang>')
-        }
-
-        ssml.append('</voice>')
-    } else {
-        ssml.append(escapedMessage)
+    return messageParts.collect { String messagePart ->
+        prefix +
+            escapeXmlText(messagePart) +
+            suffix
     }
 }
 
-void appendSoundStep(
-    StringBuilder ssml,
+List<String> splitMessageForSsml(
+    String message,
+    Integer maximumEscapedLength
+) {
+    List<String> parts = []
+    String remaining = message.trim()
+
+    while (remaining) {
+        if (
+            escapeXmlText(remaining).length() <=
+                maximumEscapedLength
+        ) {
+            parts.add(remaining)
+            break
+        }
+
+        Integer cutIndex = 0
+
+        for (
+            Integer index = 1;
+            index <= remaining.length();
+            index++
+        ) {
+            if (
+                escapeXmlText(
+                    remaining.substring(0, index)
+                ).length() > maximumEscapedLength
+            ) {
+                break
+            }
+
+            cutIndex = index
+        }
+
+        if (cutIndex < 1) {
+            log.error(
+                "Unable to split a message within the safe Echo " +
+                "Speaks command length."
+            )
+            return []
+        }
+
+        String candidate =
+            remaining.substring(0, cutIndex)
+        Integer sentenceIndex =
+            findSentenceSplitIndex(candidate)
+
+        if (sentenceIndex > 0) {
+            cutIndex = sentenceIndex
+        } else {
+            Integer whitespaceIndex =
+                candidate.lastIndexOf(' ')
+
+            if (whitespaceIndex > 0) {
+                cutIndex = whitespaceIndex
+            }
+        }
+
+        String part =
+            remaining.substring(0, cutIndex).trim()
+
+        if (!part) {
+            part =
+                remaining.substring(0, cutIndex)
+        }
+
+        parts.add(part)
+        remaining =
+            remaining.substring(cutIndex).trim()
+    }
+
+    return parts
+}
+
+Integer findSentenceSplitIndex(String value) {
+    List<String> sentenceEndings = [
+        ". ",
+        "! ",
+        "? ",
+        "。",
+        "！",
+        "？",
+        "\n"
+    ]
+    Integer preferredIndex = -1
+
+    sentenceEndings.each { String ending ->
+        Integer endingIndex =
+            value.lastIndexOf(ending)
+
+        if (endingIndex >= 0) {
+            Integer splitIndex =
+                endingIndex +
+                (ending == "\n" ? 0 : ending.trim().length())
+
+            if (splitIndex > preferredIndex) {
+                preferredIndex = splitIndex
+            }
+        }
+    }
+
+    return preferredIndex
+}
+
+String buildSoundStepFragment(
     String stepId,
     Integer index
 ) {
@@ -710,14 +882,12 @@ void appendSoundStep(
             "Skipping sound step ${index + 1}: " +
             "no valid sound was configured."
         )
-        return
+        return null
     }
 
-    ssml.append('<audio src="')
-    ssml.append(
-        escapeXmlAttribute(uri)
-    )
-    ssml.append('"/>')
+    return '<audio src="' +
+        escapeXmlAttribute(uri) +
+        '"/>'
 }
 
 /*
@@ -726,11 +896,21 @@ void appendSoundStep(
 
 void sendToEcho(
     echoDevice,
-    String ssml
+    List<String> ssmlChunks
 ) {
+    Integer previousVolume = null
+    Boolean volumeWasChanged = false
+    Boolean useNativeSequence = false
+
     try {
+        useNativeSequence =
+            canUseNativeSequence(
+                echoDevice,
+                ssmlChunks
+            )
+
         if (changeVolume == true) {
-            Integer previousVolume =
+            previousVolume =
                 getOriginalVolume(echoDevice)
 
             if (
@@ -759,8 +939,12 @@ void sendToEcho(
                 echoDevice.setVolume(
                     temporaryVolume
                 )
+                volumeWasChanged = true
 
-                if (restoreVolume == true) {
+                if (
+                    restoreVolume == true &&
+                    !useNativeSequence
+                ) {
                     try {
                         scheduleVolumeRestore(
                             echoDevice,
@@ -777,6 +961,14 @@ void sendToEcho(
 
                         throw scheduleException
                     }
+                } else if (
+                    restoreVolume == true &&
+                    useNativeSequence
+                ) {
+                    trackNativeVolumeRestore(
+                        echoDevice,
+                        previousVolume
+                    )
                 }
 
                 /*
@@ -786,14 +978,40 @@ void sendToEcho(
             }
         }
 
-        /*
-         * Direct speak(String) is intentional. It preserves the SSML that
-         * Rule Machine and Echo Speaks Actions otherwise rewrite.
-         */
-        echoDevice.speak(
-            ssml as String
+        /* Send SSML directly or through Echo Speaks' native sequence API. */
+        sendSsmlChunks(
+            echoDevice,
+            ssmlChunks,
+            useNativeSequence,
+            (
+                volumeWasChanged &&
+                restoreVolume == true
+            ) ? previousVolume : null
         )
     } catch (Exception ex) {
+        if (
+            useNativeSequence &&
+            volumeWasChanged &&
+            restoreVolume == true &&
+            previousVolume != null
+        ) {
+            removeNativeVolumeRestore(
+                echoDevice.id.toString()
+            )
+
+            try {
+                echoDevice.setVolume(
+                    previousVolume
+                )
+            } catch (Exception restoreException) {
+                log.warn(
+                    "Unable to roll back volume on " +
+                    "${echoDevice?.displayName}: " +
+                    "${restoreException.message}"
+                )
+            }
+        }
+
         log.error(
             "Unable to send sequence to " +
             "${echoDevice?.displayName}: " +
@@ -851,6 +1069,88 @@ void scheduleVolumeRestore(
     scheduleNextVolumeRestore()
 }
 
+void sendSsmlChunks(
+    echoDevice,
+    List<String> ssmlChunks,
+    Boolean useNativeSequence,
+    Integer nativeRestoreVolume
+) {
+    if (ssmlChunks.size() == 1) {
+        echoDevice.speak(
+            ssmlChunks.first() as String
+        )
+        return
+    }
+
+    if (useNativeSequence) {
+        List<String> sequenceItems =
+            ssmlChunks.collect { String chunk ->
+                "speak::${chunk}"
+            }
+
+        if (nativeRestoreVolume != null) {
+            Integer restoreDelay =
+                safeInteger(
+                    volumeRestoreDelay,
+                    8
+                )
+
+            sequenceItems.add(
+                "wait::${restoreDelay}"
+            )
+            sequenceItems.add(
+                "volume::${nativeRestoreVolume}"
+            )
+        }
+
+        String sequenceCommand =
+            sequenceItems.join(",,")
+
+        if (debugLogging == true) {
+            log.debug(
+                "${echoDevice.displayName}: sending chunks with " +
+                "Echo Speaks executeSequenceCommand"
+            )
+        }
+
+        echoDevice.executeSequenceCommand(
+            sequenceCommand
+        )
+        return
+    }
+
+    log.warn(
+        "${echoDevice.displayName}: native Echo Speaks sequencing " +
+        "was unavailable; sending chunks as individual commands"
+    )
+
+    ssmlChunks.each { String chunk ->
+        echoDevice.speak(
+            chunk as String
+        )
+    }
+}
+
+Boolean canUseNativeSequence(
+    echoDevice,
+    List<String> ssmlChunks
+) {
+    if (ssmlChunks.size() < 2) {
+        return false
+    }
+
+    Boolean containsSequenceDelimiter =
+        ssmlChunks.any { String chunk ->
+            chunk.contains(",,") ||
+                chunk.contains("::")
+        }
+
+    return !containsSequenceDelimiter &&
+        echoDevice.hasCommand(
+            "executeSequenceCommand"
+        )
+}
+
 void initializeVolumeRestoreState() {
     if (!(atomicState.pendingVolumeRestores instanceof Map)) {
         atomicState.pendingVolumeRestores = [:]
@@ -871,9 +1171,36 @@ void removePendingVolumeRestore(String deviceId) {
 
 Integer getOriginalVolume(echoDevice) {
     initializeVolumeRestoreState()
+    initializeNativeVolumeRestoreState()
 
     String deviceId =
         echoDevice.id.toString()
+
+    Integer nativeOriginalVolume =
+        safeInteger(
+            atomicState.nativeVolumeRestores[deviceId],
+            null
+        )
+
+    if (nativeOriginalVolume != null) {
+        Integer currentVolume =
+            getDeviceVolume(echoDevice)
+        Integer temporaryVolume =
+            safeInteger(
+                playbackVolume,
+                40
+            )
+
+        if (
+            currentVolume != null &&
+            currentVolume != temporaryVolume
+        ) {
+            removeNativeVolumeRestore(deviceId)
+            return currentVolume
+        }
+
+        return nativeOriginalVolume
+    }
 
     Map pendingRestore =
         atomicState.pendingVolumeRestores[deviceId] as Map
@@ -886,6 +1213,73 @@ Integer getOriginalVolume(echoDevice) {
     }
 
     return getDeviceVolume(echoDevice)
+}
+
+void initializeNativeVolumeRestoreState() {
+    if (!(atomicState.nativeVolumeRestores instanceof Map)) {
+        atomicState.nativeVolumeRestores = [:]
+    }
+}
+
+void trackNativeVolumeRestore(
+    echoDevice,
+    Integer previousVolume
+) {
+    initializeNativeVolumeRestoreState()
+
+    Map nativeRestores =
+        atomicState.nativeVolumeRestores ?: [:]
+    String deviceId =
+        echoDevice.id.toString()
+
+    if (nativeRestores[deviceId] == null) {
+        nativeRestores[deviceId] =
+            previousVolume
+        atomicState.nativeVolumeRestores =
+            nativeRestores
+    }
+}
+
+void removeNativeVolumeRestore(String deviceId) {
+    initializeNativeVolumeRestoreState()
+
+    Map nativeRestores =
+        atomicState.nativeVolumeRestores ?: [:]
+
+    nativeRestores.remove(deviceId)
+    atomicState.nativeVolumeRestores =
+        nativeRestores
+}
+
+void restoreNativePendingVolumes() {
+    initializeNativeVolumeRestoreState()
+
+    Map nativeRestores =
+        atomicState.nativeVolumeRestores ?: [:]
+
+    nativeRestores.each {
+        String deviceId,
+        previousVolume ->
+        def echoDevice = echoDevices?.find {
+            it.id.toString() == deviceId
+        }
+
+        if (echoDevice) {
+            try {
+                echoDevice.setVolume(
+                    safeInteger(previousVolume, 40)
+                )
+            } catch (Exception ex) {
+                log.warn(
+                    "Unable to restore volume on " +
+                    "${echoDevice.displayName} during uninstall: " +
+                    "${ex.message}"
+                )
+            }
+        }
+    }
+
+    atomicState.nativeVolumeRestores = [:]
 }
 
 void scheduleNextVolumeRestore() {

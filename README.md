@@ -216,6 +216,24 @@ When enabled, the app:
 
 Set the restore delay long enough for the complete sequence to finish. If it is too short, the volume may change while the sequence is still playing.
 
+For a multi-part native Echo Speaks sequence, the app places the wait and
+volume-restore actions at the end of the same sequence. In that case, the
+restore delay begins after the final speech or sound command finishes.
+
+## Long Sequences
+
+Echo Speaks rejects direct SSML commands above an observed limit of
+approximately 449 characters. For long sequences, the app keeps each native
+Echo Speaks sequence item at 390 characters or fewer. It
+splits long messages at sentence boundaries when possible, then falls back to
+word boundaries. It rebuilds complete voice and locale tags around each part
+and groups sound and message steps into ordered commands without splitting an
+audio tag. Multi-part sequences use Echo Speaks' native
+`executeSequenceCommand()` queue when the selected device supports it.
+
+When debug logging is enabled, the app reports the total generated SSML
+length, the number of commands, and the length and contents of each command.
+
 ## Why This App Exists
 
 Hubitat Rule Machine may strip or alter SSML tags entered into text fields. Echo Speaks Actions also does not always pass every SSML element through the same way as the direct Echo Speaks device `speak()` command.
