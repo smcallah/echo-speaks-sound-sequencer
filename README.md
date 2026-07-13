@@ -228,8 +228,8 @@ Echo Speaks sequence item at 390 characters or fewer. It
 splits long messages at sentence boundaries when possible, then falls back to
 word boundaries. It rebuilds complete voice and locale tags around each part
 and groups sound and message steps into ordered commands without splitting an
-audio tag. Sequences use Echo Speaks' native `executeSequenceCommand()` queue
-when the selected device supports it, including sequences with a single step.
+audio tag. Sequences use Echo Speaks' native `executeSequenceCommand()` queue,
+including sequences with a single step.
 
 When debug logging is enabled, the app reports the total generated SSML
 length, the number of commands, and the length and contents of each command.
@@ -356,7 +356,7 @@ Licensed under the [Apache License 2.0](LICENSE).
 
 Releases use `YY.Q.release`, where `YY` is the two-digit year, `Q` is the
 calendar quarter, and `release` starts at 1 each quarter. The current version
-is `26.3.4`.
+is `26.3.5`.
 
 ## Credits
 

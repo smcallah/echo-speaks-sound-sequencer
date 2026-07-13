@@ -18,7 +18,7 @@
 
 import groovy.transform.Field
 
-@Field static final String APP_VERSION = "26.3.4"
+@Field static final String APP_VERSION = "26.3.5"
 @Field static final Integer DEBUG_LOG_SECONDS = 1800
 
 definition(
@@ -962,7 +962,6 @@ void sendToEcho(
     try {
         useNativeSequence =
             canUseNativeSequence(
-                echoDevice,
                 ssmlChunks
             )
 
@@ -1212,7 +1211,6 @@ void sendSsmlChunks(
 }
 
 Boolean canUseNativeSequence(
-    echoDevice,
     List<String> ssmlChunks
 ) {
     Boolean containsSequenceDelimiter =
@@ -1221,10 +1219,12 @@ Boolean canUseNativeSequence(
                 chunk.contains("::")
         }
 
-    return !containsSequenceDelimiter &&
-        echoDevice.hasCommand(
-            "executeSequenceCommand"
-        )
+    /*
+     * The device selector only accepts Echo Speaks devices. Avoid hasCommand()
+     * because Hubitat logs a MethodSelectionException while introspecting the
+     * Echo Speaks driver's overloaded speak() methods.
+     */
+    return !containsSequenceDelimiter
 }
 
 void initializeVolumeRestoreState() {
