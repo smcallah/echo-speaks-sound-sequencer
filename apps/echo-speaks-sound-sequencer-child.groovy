@@ -18,7 +18,7 @@
 
 import groovy.transform.Field
 
-@Field static final String APP_VERSION = "26.3.1"
+@Field static final String APP_VERSION = "26.3.2"
 @Field static final Integer DEBUG_LOG_SECONDS = 1800
 
 definition(
@@ -955,6 +955,7 @@ void sendToEcho(
     List<String> ssmlChunks
 ) {
     Integer previousVolume = null
+    Integer temporaryVolume = null
     Boolean volumeWasChanged = false
     Boolean useNativeSequence = false
 
@@ -979,7 +980,7 @@ void sendToEcho(
                     "be read for restoration"
                 )
             } else {
-                Integer temporaryVolume =
+                temporaryVolume =
                     safeInteger(
                         playbackVolume,
                         40
@@ -992,10 +993,13 @@ void sendToEcho(
                     )
                 }
 
-                echoDevice.setVolume(
-                    temporaryVolume
-                )
                 volumeWasChanged = true
+
+                if (!useNativeSequence) {
+                    echoDevice.setVolume(
+                        temporaryVolume
+                    )
+                }
 
                 if (
                     restoreVolume == true &&
@@ -1027,10 +1031,10 @@ void sendToEcho(
                     )
                 }
 
-                /*
-                 * Let the volume command get ahead of playback.
-                 */
-                pauseExecution(300)
+                if (!useNativeSequence) {
+                    /* Let the separate volume command get ahead of playback. */
+                    pauseExecution(300)
+                }
             }
         }
 
@@ -1039,6 +1043,10 @@ void sendToEcho(
             echoDevice,
             ssmlChunks,
             useNativeSequence,
+            (
+                volumeWasChanged &&
+                useNativeSequence
+            ) ? temporaryVolume : null,
             (
                 volumeWasChanged &&
                 restoreVolume == true
@@ -1129,20 +1137,23 @@ void sendSsmlChunks(
     echoDevice,
     List<String> ssmlChunks,
     Boolean useNativeSequence,
+    Integer nativePlaybackVolume,
     Integer nativeRestoreVolume
 ) {
-    if (ssmlChunks.size() == 1) {
-        echoDevice.speak(
-            ssmlChunks.first() as String
-        )
-        return
-    }
-
     if (useNativeSequence) {
-        List<String> sequenceItems =
+        List<String> sequenceItems = []
+
+        if (nativePlaybackVolume != null) {
+            sequenceItems.add(
+                "volume::${nativePlaybackVolume}"
+            )
+        }
+
+        sequenceItems.addAll(
             ssmlChunks.collect { String chunk ->
                 "speak::${chunk}"
             }
+        )
 
         if (nativeRestoreVolume != null) {
             Integer restoreDelay =
@@ -1175,6 +1186,13 @@ void sendSsmlChunks(
         return
     }
 
+    if (ssmlChunks.size() == 1) {
+        echoDevice.speak(
+            ssmlChunks.first() as String
+        )
+        return
+    }
+
     log.warn(
         "${echoDevice.displayName}: native Echo Speaks sequencing " +
         "was unavailable; sending chunks as individual commands"
@@ -1191,7 +1209,10 @@ Boolean canUseNativeSequence(
     echoDevice,
     List<String> ssmlChunks
 ) {
-    if (ssmlChunks.size() < 2) {
+    if (
+        ssmlChunks.size() < 2 &&
+        changeVolume != true
+    ) {
         return false
     }
 

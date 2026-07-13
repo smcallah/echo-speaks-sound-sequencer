@@ -18,7 +18,7 @@
 
 import groovy.transform.Field
 
-@Field static final String APP_VERSION = "26.3.1"
+@Field static final String APP_VERSION = "26.3.2"
 
 definition(
     name: "Echo Speaks Sound Sequencer",
