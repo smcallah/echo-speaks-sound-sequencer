@@ -18,7 +18,7 @@
 
 import groovy.transform.Field
 
-@Field static final String APP_VERSION = "26.3.2"
+@Field static final String APP_VERSION = "26.3.3"
 @Field static final Integer DEBUG_LOG_SECONDS = 1800
 
 definition(
@@ -1188,7 +1188,10 @@ void sendSsmlChunks(
 
     if (ssmlChunks.size() == 1) {
         echoDevice.speak(
-            ssmlChunks.first() as String
+            ssmlChunks.first() as String,
+            null,
+            null,
+            false
         )
         return
     }
@@ -1200,7 +1203,10 @@ void sendSsmlChunks(
 
     ssmlChunks.each { String chunk ->
         echoDevice.speak(
-            chunk as String
+            chunk as String,
+            null,
+            null,
+            false
         )
     }
 }
