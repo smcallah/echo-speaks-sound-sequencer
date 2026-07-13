@@ -222,14 +222,18 @@ restore delay begins after the final speech or sound command finishes.
 
 ## Long Sequences
 
-Echo Speaks rejects direct SSML commands above an observed limit of
-approximately 449 characters. For long sequences, the app keeps each native
-Echo Speaks sequence item at 390 characters or fewer. It
-splits long messages at sentence boundaries when possible, then falls back to
-word boundaries. It rebuilds complete voice and locale tags around each part
-and groups sound and message steps into ordered commands without splitting an
-audio tag. Sequences use Echo Speaks' native `executeSequenceCommand()` queue,
-including sequences with a single step.
+In testing, every direct SSML command that exceeded approximately 449
+characters caused Alexa to say:
+
+> Sorry, I'm having trouble accessing your Simon Says NA skill right now.
+
+To avoid this length-related failure, the app keeps each native Echo Speaks
+sequence item at 390 characters or fewer. The app splits long messages at
+sentence boundaries when possible, then falls back to word boundaries. It
+rebuilds complete voice and locale tags around each part and groups sound and
+message steps into ordered commands without splitting an audio tag. Sequences
+use Echo Speaks' native `executeSequenceCommand()` queue, including sequences
+with a single step.
 
 When debug logging is enabled, the app reports the total generated SSML
 length, the number of commands, and the length and contents of each command.
@@ -262,44 +266,6 @@ The file must also use a format and encoding Alexa accepts. A URL working in a b
 
 Amazon Sound Library identifiers must be exact. An invalid or retired URI may be skipped while other steps continue to play.
 
-### Debug logging
-
-Enable debug logging in a sequence child app to view:
-
-- The generated SSML
-- Selected Echo devices
-- Temporary volume changes
-- Scheduled volume restoration
-
-Avoid posting full logs publicly without reviewing them. Echo Speaks logs may contain device identifiers or account-related metadata.
-
-## Renaming the Apps
-
-Do not rename the parent or child `definition(name: ...)` values while installed child sequences still exist.
-
-Hubitat treats the exact combination of namespace and app name as the app type identity. Renaming code does not migrate existing installed app instances.
-
-Safe rename procedure:
-
-1. Remove all existing child sequences.
-2. Remove the installed parent app.
-3. Rename both app definitions.
-4. Update the child app's `parent:` value.
-5. Update the parent app's `appName:` value.
-6. Save the parent code.
-7. Save the child code.
-8. Reinstall the parent.
-9. Recreate the child sequences.
-
-An old child may otherwise remain subscribed to its trigger switch even when it no longer appears normally in the Apps list.
-
-If that happens:
-
-1. Open the trigger switch device page.
-2. Find the old app under **In use by**.
-3. Open the app from that list.
-4. Remove it.
-
 ## Troubleshooting
 
 ### The sequence does not run
@@ -319,15 +285,13 @@ Test the exact audio URI from the Echo Speaks device page using the `speak` comm
 
 If it fails there, the URI or audio format is the problem rather than this app.
 
+An audio URI that points to an invalid path may cause Alexa to say:
+
+> Sorry, I'm having trouble accessing your Simon Says NA skill right now.
+
 ### Audio works from the device page but not Rule Machine
 
 That is the problem this app is designed to bypass. Use the sequence app instead of passing raw SSML through Rule Machine.
-
-### Duplicate playback
-
-More than one installed app may be subscribed to the same trigger switch.
-
-Open the trigger switch device page and inspect **In use by**. Remove obsolete or orphaned app instances.
 
 ### Volume does not restore correctly
 
@@ -336,15 +300,28 @@ Open the trigger switch device page and inspect **In use by**. Remove obsolete o
 - Enable debug logging
 - Check for volume-related errors in Hubitat logs
 
+### Using debug logging
+
+Enable debug logging in the affected sequence child app. The logs show:
+
+- The generated SSML
+- Selected Echo devices
+- Temporary volume changes
+- Scheduled volume restoration
+
+Review logs before posting them publicly. Echo Speaks logs may contain device
+identifiers or account-related metadata.
+
 ## Updating
 
-After changing the code in GitHub:
+To update the app to the latest release:
 
-1. Open the matching app under **Apps Code**.
-2. Use **Import** to reload the raw GitHub URL.
-3. Review the changes.
-4. Click **Save**.
-5. Open each installed child sequence and click **Done** if the update changes subscriptions or settings.
+1. In Hubitat, open the parent app under **Apps Code**.
+2. Use **Import** to reload it from its GitHub URL.
+3. Review the imported changes and click **Save**.
+4. Repeat these steps for the child app.
+5. Open each installed child sequence and click **Done** so Hubitat refreshes
+   its subscriptions and settings.
 
 ## License
 
