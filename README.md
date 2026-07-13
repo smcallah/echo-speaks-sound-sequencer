@@ -316,10 +316,11 @@ identifiers or account-related metadata.
 
 To update the app to the latest release:
 
-1. In Hubitat, open the parent app under **Apps Code**.
-2. Use **Import** to reload it from its GitHub URL.
+1. In Hubitat, open **Echo Speaks Sound Sequencer** under **Apps Code**.
+2. Click the three-dot menu in the code editor, then select **Import** to
+   reload it from its GitHub URL.
 3. Review the imported changes and click **Save**.
-4. Repeat these steps for the child app.
+4. Repeat these steps for **Echo Speaks Sound - Sequence**.
 5. Open each installed child sequence and click **Done** so Hubitat refreshes
    its subscriptions and settings.
 
